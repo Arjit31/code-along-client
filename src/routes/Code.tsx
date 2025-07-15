@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 async function getConnectedDevices(type: any) {
@@ -12,10 +12,9 @@ async function openMediaDevices(constraints: any) {
 
 export function Code() {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const otherVideo = useRef<HTMLVideoElement>(null);
-  const [videos, setVideo] =
-    useState<React.RefObject<HTMLVideoElement | null>>();
-    const [isVideos, setIsVideos] = useState(false);
+  const remoteStreams = useRef<Map<string, MediaStream>>(new Map());
+  const [streamIds, setStreamIds] = useState<string[]>([]);
+  const [videos, setVideo] = useState(0);
   const socket = useRef<WebSocket>(new WebSocket(""));
   const [peerConnections, setPeerConnections] = useState<
     Map<string, RTCPeerConnection>
@@ -53,14 +52,31 @@ export function Code() {
     peerConnection.ontrack = (event: any) => {
       console.log("video recieved");
       setVideo((vid) => {
-        if (vid?.current)
-          vid.current.srcObject = new MediaStream([event.track]);
-        return vid;
+        return vid + 1;
       });
-      if (otherVideo.current) otherVideo.current.srcObject = new MediaStream([event.track])
-      setIsVideos(true);
+      const stream = new MediaStream([event.track]);
+      const streamId = receiverId;
+      removeStream(streamId);
+      remoteStreams.current.set(streamId, stream);
+      setStreamIds((prev) => [...prev, streamId]);
+      console.log(remoteStreams.current);
+      stream.onremovetrack = () => {
+          removeStream(streamId);
+        }
+      event.track.addEventListener("ended", () => {
+        console.log(`Track for stream ${streamId} ended.`);
+        removeStream(streamId);
+        stream.onremovetrack = () => {
+          removeStream(streamId);
+        }
+      });
     };
     return peerConnection;
+  }
+
+  function removeStream(streamId: string) {
+    remoteStreams.current.delete(streamId);
+    setStreamIds((prev) => prev.filter((id) => id !== streamId));
   }
 
   async function connectMedia() {
@@ -101,7 +117,7 @@ export function Code() {
             pc?.addTrack(track);
           });
           console.log("videoSent", stream, videoRef.current?.srcObject);
-        })
+        });
         const answer = await pc?.createAnswer();
         await pc?.setLocalDescription(answer);
         const answerMessage = {
@@ -141,6 +157,12 @@ export function Code() {
       console.log("after websocket");
     }
     init();
+    return () => {
+      peerConnections.forEach((pc) => pc.close());
+      socket.current.close();
+      remoteStreams.current.clear();
+      setStreamIds([]);
+    };
   }, []);
 
   useEffect(() => {
@@ -149,11 +171,25 @@ export function Code() {
 
   return (
     <>
-      Code
-      <video autoPlay ref={videoRef}></video>
-      {isVideos ? <div>true</div> : <div>false</div>}
-      <video autoPlay ref={otherVideo}></video>
-      {/* {videos ? <video autoPlay ref={otherVideo}></video> : <></>} */}
+      <div className="flex">
+        Code
+        <video autoPlay ref={videoRef} width="320" height="240"></video>
+        {videos}
+        {streamIds.map((streamId) => (
+          <video
+            key={streamId}
+            autoPlay
+            width="320"
+            height="240"
+            ref={(videoElement) => {
+              if (videoElement) {
+                const stream = remoteStreams.current.get(streamId);
+                if (stream) videoElement.srcObject = stream;
+              }
+            }}
+          />
+        ))}
+      </div>
     </>
   );
 }
