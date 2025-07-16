@@ -1,6 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { CodeEditor } from "../components/CodeEditor";
+import {
+  FaMicrophone,
+  FaMicrophoneSlash,
+  FaVideo,
+  FaVideoSlash,
+} from "react-icons/fa";
+import { useAtom } from "jotai";
+import { themeAtom } from "../atoms/themeAtom";
+import Divider from "@mui/material/Divider";
 
 async function getConnectedDevices(type: any) {
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -15,7 +24,6 @@ export function Code() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const remoteStreams = useRef<Map<string, MediaStream>>(new Map());
   const [streamIds, setStreamIds] = useState<string[]>([]);
-  const [videos, setVideo] = useState(0);
   const socket = useRef<WebSocket>(new WebSocket(""));
   const [peerConnections, setPeerConnections] = useState<
     Map<string, RTCPeerConnection>
@@ -23,6 +31,30 @@ export function Code() {
   const pcRef = useRef(peerConnections);
   const location = useLocation();
   const roomId = location.pathname.split("/")[2];
+
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(false);
+  const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
+
+  function toggleMic() {
+    const stream = videoRef.current?.srcObject as MediaStream;
+    if (stream) {
+      stream
+        .getAudioTracks()
+        .forEach((track) => (track.enabled = !track.enabled));
+      setIsAudioMuted(!isAudioMuted);
+    }
+  }
+
+  function toggleCam() {
+    const stream = videoRef.current?.srcObject as MediaStream;
+    if (stream) {
+      stream
+        .getVideoTracks()
+        .forEach((track) => (track.enabled = !track.enabled));
+      setIsVideoMuted(!isVideoMuted);
+    }
+  }
 
   function createNewConnection(message: any, receiverId: string) {
     const peerConnection = new RTCPeerConnection();
@@ -52,9 +84,6 @@ export function Code() {
     };
     peerConnection.ontrack = (event: any) => {
       console.log("video recieved");
-      setVideo((vid) => {
-        return vid + 1;
-      });
       const stream = new MediaStream([event.track]);
       const streamId = receiverId;
       removeStream(streamId);
@@ -90,7 +119,9 @@ export function Code() {
 
   async function connectMedia() {
     const videoCameras = await getConnectedDevices("videoinput");
+    const audioMics = await getConnectedDevices("audioinput");
     console.log("Cameras found:", videoCameras);
+    console.log("Mics found:", audioMics);
     try {
       const stream = await openMediaDevices({ video: true, audio: true });
       if (videoRef.current) videoRef.current.srcObject = stream;
@@ -196,25 +227,68 @@ export function Code() {
   }, [peerConnections]);
 
   return (
-    <>
-      <div className="flex">
-        <video autoPlay ref={videoRef} width="240" height="180"></video>
+    <div className="h-full w-full overflow-y-scroll overflow-x-hidden ">
+      <div className="flex justify-center  p-2 gap-2 ">
+        <div className="flex flex-col gap-2 items-center justify-center">
+          <button
+            onClick={toggleCam}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-400 transition"
+          >
+            {isVideoMuted ? (
+              <FaVideoSlash size={20} color="black" />
+            ) : (
+              <FaVideo size={20} color="black" />
+            )}
+          </button>
+          <button
+            onClick={toggleMic}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-400 transition"
+          >
+            {isAudioMuted ? (
+              <FaMicrophoneSlash size={20} color="black" />
+            ) : (
+              <FaMicrophone size={20} color="black" />
+            )}
+          </button>
+        </div>
+        <video
+          autoPlay
+          ref={videoRef}
+          width="240"
+          height="180"
+          className={`rounded-2xl transition-shadow duration-300
+  ${
+    globalTheme === "dark"
+      ? "shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+      : "shadow-[0_0_15px_rgba(0,0,0,0.1)]"
+  }`}
+        />
+
         {streamIds.map((streamId) => (
-          <video
-            key={streamId}
-            autoPlay
-            width="240"
-            height="180"
-            ref={(videoElement) => {
-              if (videoElement) {
-                const stream = remoteStreams.current.get(streamId);
-                if (stream) videoElement.srcObject = stream;
-              }
-            }}
-          />
+          <div className="flex items-center justify-center">
+            <div className="mr-2 h-5/6 w-0.5 bg-neutral-700"></div>
+            <video
+              key={streamId}
+              autoPlay
+              width="240"
+              height="180"
+              className={`rounded-2xl transition-shadow duration-300
+  ${
+    globalTheme === "dark"
+      ? "shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+      : "shadow-[0_0_15px_rgba(0,0,0,0.1)]"
+  }`}
+              ref={(videoElement) => {
+                if (videoElement) {
+                  const stream = remoteStreams.current.get(streamId);
+                  if (stream) videoElement.srcObject = stream;
+                }
+              }}
+            />
+          </div>
         ))}
       </div>
       <CodeEditor />
-    </>
+    </div>
   );
 }

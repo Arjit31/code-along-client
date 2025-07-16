@@ -1,66 +1,108 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import Quill from "quill";
-import QuillCursors from "quill-cursors";
 import * as Y from "yjs";
-import { QuillBinding } from "y-quill";
+import { MonacoBinding } from "y-monaco";
 import { WebrtcProvider } from "y-webrtc";
-
-// Import Quill's Snow theme CSS
-import "quill/dist/quill.snow.css";
+import * as monaco from "monaco-editor";
+import { useLocation } from "react-router-dom";
+import { useAtom } from "jotai";
+import { themeAtom } from "../atoms/themeAtom";
 
 export function CodeEditor() {
-  Quill.register("modules/cursors", QuillCursors);
   const editorRef = useRef<HTMLDivElement>(null);
+  const monacoEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(
+    null
+  );
   const location = useLocation();
   const roomId = location.pathname.split("/")[2];
-
-  function setUpTextEditor() {
-    // @ts-ignore
-    const quill = new Quill(editorRef.current, {
-      modules: {
-        cursors: true,
-        toolbar: [
-          // adding some basic Quill content features
-          [{ header: [1, 2, false] }],
-          ["bold", "italic", "underline"],
-          ["image", "code-block"],
-        ],
-        history: {
-          // Local undo shouldn't undo changes
-          // from remote users
-          userOnly: true,
-        },
-      },
-      placeholder: "Start collaborating...",
-      theme: "snow", // 'bubble' is also great
-    });
-
-    // A Yjs document holds the shared data
-    const ydoc = new Y.Doc();
-
-    const provider = new WebrtcProvider("quill-demo-room", ydoc);
-
-    // Define a shared text type on the document
-    const ytext = ydoc.getText("quill");
-
-    // "Bind" the quill editor to a Yjs text type.
-    const binding = new QuillBinding(ytext, quill, provider.awareness);
-
-    // Remove the selection when the iframe is blurred
-    window.addEventListener("blur", () => {
-      quill.blur();
-    });
-  }
+  const [language, setLanguage] = useState("cpp");
+  const [theme, setTheme] = useState("vs-dark");
+  const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
 
   useEffect(() => {
-    setUpTextEditor()
+    // Create Yjs document
+    const ydoc = new Y.Doc();
+    const provider = new WebrtcProvider(roomId, ydoc);
+    const ytext = ydoc.getText("monaco");
+
+    // Create Monaco editor
+    const editor = monaco.editor.create(editorRef.current!, {
+      value: "",
+      language,
+      theme,
+      automaticLayout: true,
+    });
+
+    monacoEditorRef.current = editor;
+
+    // Bind Monaco and Yjs
+    const monacoBinding = new MonacoBinding(
+      ytext,
+      editor.getModel()!,
+      new Set([editor]),
+      provider.awareness
+    );
 
     return () => {
+      provider.destroy();
+      ydoc.destroy();
+      editor.dispose();
     };
   }, []);
 
+  // Handle language or theme change
+  useEffect(() => {
+    if (monacoEditorRef.current) {
+      monaco.editor.setTheme(theme);
+      monaco.editor.setModelLanguage(
+        monacoEditorRef.current.getModel()!,
+        language
+      );
+    }
+  }, [language, theme]);
+
   return (
-    <div ref={editorRef} id="editor" className="w-full h-96 border border-gray-300 rounded-lg shadow-lg"/>
+    <div className="h-full w-full">
+      <div className="flex gap-4 mb-2 ml-2 mt-2">
+        <div>
+          <label className="mr-2 font-medium">Language:</label>
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className={`border rounded px-2 py-1 transition-colors duration-300
+        ${
+          globalTheme === "dark"
+            ? "bg-neutral-900 text-neutral-50 border-neutral-700"
+            : "bg-neutral-50 text-neutral-900 border-neutral-300"
+        }`}
+          >
+            <option value="cpp">C++</option>
+            <option value="javascript">JavaScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="csharp">C#</option>
+            <option value="typescript">TypeScript</option>
+            <option value="html">HTML</option>
+          </select>
+        </div>
+        <div>
+          <label className="mr-2 font-medium">Theme:</label>
+          <select
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            className={`border rounded px-2 py-1 transition-colors duration-300
+        ${
+          globalTheme === "dark"
+            ? "bg-neutral-900 text-neutral-50 border-neutral-700"
+            : "bg-neutral-50 text-neutral-900 border-neutral-300"
+        }`}
+          >
+            <option value="vs-dark">Dark</option>
+            <option value="vs-light">Light</option>
+          </select>
+        </div>
+      </div>
+
+      <div ref={editorRef} style={{ height: "100%", width: "100%" }} />
+    </div>
   );
 }
