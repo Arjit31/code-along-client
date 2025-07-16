@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { CodeEditor } from "../components/CodeEditor";
 
 async function getConnectedDevices(type: any) {
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -59,17 +60,25 @@ export function Code() {
       removeStream(streamId);
       remoteStreams.current.set(streamId, stream);
       setStreamIds((prev) => [...prev, streamId]);
-      console.log(remoteStreams.current);
-      stream.onremovetrack = () => {
-          removeStream(streamId);
-        }
-      event.track.addEventListener("ended", () => {
-        console.log(`Track for stream ${streamId} ended.`);
-        removeStream(streamId);
-        stream.onremovetrack = () => {
-          removeStream(streamId);
-        }
-      });
+    };
+    peerConnection.onconnectionstatechange = () => {
+      console.log(
+        `Connection state for ${receiverId}:`,
+        peerConnection.connectionState
+      );
+      if (
+        peerConnection.connectionState === "disconnected" ||
+        peerConnection.connectionState === "failed" ||
+        peerConnection.connectionState === "closed"
+      ) {
+        console.log(`Peer ${receiverId} disconnected`);
+        removeStream(receiverId);
+        setPeerConnections((prev) => {
+          const newConnections = new Map(prev);
+          newConnections.delete(receiverId);
+          return newConnections;
+        });
+      }
     };
     return peerConnection;
   }
@@ -137,6 +146,14 @@ export function Code() {
         const ice = message.ice;
         const pc = pcRef.current.get(senderId);
         pc?.addIceCandidate(ice);
+      } else if (message.type === "close") {
+        const senderId = message.senderId;
+        removeStream(senderId);
+        setPeerConnections((prev) => {
+          const newConnections = new Map(prev);
+          newConnections.delete(senderId);
+          return newConnections;
+        });
       }
     };
     socket.current.onopen = () => {
@@ -145,6 +162,15 @@ export function Code() {
         roomId: roomId,
       };
       socket.current.send(JSON.stringify(joinMessage));
+    };
+    socket.current.onclose = (event) => {
+      console.log("WebSocket connection closed:", event);
+      // Clean up all peer connections when signaling server disconnects
+      peerConnections.forEach((pc, peerId) => {
+        pc.close();
+        removeStream(peerId);
+      });
+      setPeerConnections(new Map());
     };
   }
 
@@ -172,15 +198,13 @@ export function Code() {
   return (
     <>
       <div className="flex">
-        Code
-        <video autoPlay ref={videoRef} width="320" height="240"></video>
-        {videos}
+        <video autoPlay ref={videoRef} width="240" height="180"></video>
         {streamIds.map((streamId) => (
           <video
             key={streamId}
             autoPlay
-            width="320"
-            height="240"
+            width="240"
+            height="180"
             ref={(videoElement) => {
               if (videoElement) {
                 const stream = remoteStreams.current.get(streamId);
@@ -190,6 +214,7 @@ export function Code() {
           />
         ))}
       </div>
+      <CodeEditor />
     </>
   );
 }
