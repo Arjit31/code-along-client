@@ -19,12 +19,10 @@ export function CodeEditor() {
   const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
 
   useEffect(() => {
-    // Create Yjs document
     const ydoc = new Y.Doc();
     const provider = new WebrtcProvider(roomId, ydoc);
     const ytext = ydoc.getText("monaco");
 
-    // Create Monaco editor
     const editor = monaco.editor.create(editorRef.current!, {
       value: "",
       language,

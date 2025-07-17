@@ -12,7 +12,7 @@ export function Layout() {
 
   return (
     <div
-      className={`flex flex-col justify-center items-center h-screen w-screen gap-2 ${
+      className={`flex flex-col justify-center items-center h-screen w-screen gap-2 overflow-scroll overflow-x-hidden ${
         theme === "dark"
           ? "bg-neutral-900 text-neutral-50"
           : "bg-neutral-50 text-neutral-900"

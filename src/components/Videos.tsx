@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
-
+import { Clipboard } from "lucide-react";
 import {
   FaMicrophone,
   FaMicrophoneSlash,
@@ -277,28 +277,6 @@ export function Videos() {
                         : "shadow-[0_0_15px_rgba(0,0,0,0.1)]"
                     }`}
           />
-          <div className="flex flex-col gap-2 items-center justify-center">
-            <button
-              onClick={toggleCam}
-              className="p-2 rounded-full bg-gray-200 hover:bg-gray-400 transition"
-            >
-              {isVideoMuted ? (
-                <FaVideoSlash size={20} color="black" />
-              ) : (
-                <FaVideo size={20} color="black" />
-              )}
-            </button>
-            <button
-              onClick={toggleMic}
-              className="p-2 rounded-full bg-gray-200 hover:bg-gray-400 transition"
-            >
-              {isAudioMuted ? (
-                <FaMicrophoneSlash size={20} color="black" />
-              ) : (
-                <FaMicrophone size={20} color="black" />
-              )}
-            </button>
-          </div>
         </div>
         <div className="flex flex-col gap-4 items-center justify-center h-screen">
           <input
@@ -306,7 +284,12 @@ export function Videos() {
             placeholder="Enter your name"
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
-            className="border p-2 rounded w-60"
+            className={`px-4 py-2 rounded-md border border-gray-600 w-60 focus:outline-none focus:ring-2 focus:ring-violet-500
+             ${
+               globalTheme === "dark"
+                 ? "bg-neutral-800 text-white border-neutral-600 focus:ring-violet-500"
+                 : "bg-neutral-100 text-black border-neutral-400 focus:ring-violet-500"
+             }`}
             maxLength={15}
           />
 
@@ -355,16 +338,67 @@ export function Videos() {
               </option>
             ))}
           </select>
+          <div className="flex items-center justify-evenly w-full">
+            <button
+              onClick={toggleCam}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-400 transition"
+            >
+              {isVideoMuted ? (
+                <FaVideoSlash size={20} color="black" />
+              ) : (
+                <FaVideo size={20} color="black" />
+              )}
+            </button>
+            <button
+              onClick={toggleMic}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-400 transition"
+            >
+              {isAudioMuted ? (
+                <FaMicrophoneSlash size={20} color="black" />
+              ) : (
+                <FaMicrophone size={20} color="black" />
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setShowPreJoin(false);
+              }}
+              disabled={userName.length < 3}
+              className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            >
+              Join Room
+            </button>
+          </div>
+          {/* Copy Room Info */}
+          <div className="flex flex-col gap-2 items-center w-full mt-4">
+            <div className="flex flex-col items-center">
+              <p className="text-sm font-medium">Room ID:</p>
+              <div className="flex gap-2 items-center">
+                <span className="text-xs font-mono">{roomId}</span>
+                <Clipboard
+                  className="w-5 h-5 cursor-pointer active:text-neutral-300"
+                  onClick={() => navigator.clipboard.writeText(roomId)}
+                />
+              </div>
+            </div>
 
-          <button
-            onClick={() => {
-              setShowPreJoin(false);
-            }}
-            disabled={userName.length < 3}
-            className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
-            Join Room
-          </button>
+            <div className="flex flex-col items-center">
+              <p className="text-sm font-medium">Room Link:</p>
+              <div className="flex gap-2 items-center">
+                <span className="text-xs max-w-[200px] truncate font-mono">
+                  {window.location.origin + "/code/" + roomId}
+                </span>
+                <Clipboard
+                  className="w-5 h-5 cursor-pointer active:text-neutral-300"
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      window.location.origin + "/code/" + roomId
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -422,11 +456,11 @@ export function Videos() {
                 width="240"
                 height="180"
                 className={`rounded-2xl transition-shadow duration-300
-        ${
-          globalTheme === "dark"
-            ? "shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-            : "shadow-[0_0_15px_rgba(0,0,0,0.1)]"
-        }`}
+                            ${
+                              globalTheme === "dark"
+                                ? "shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                                : "shadow-[0_0_15px_rgba(0,0,0,0.1)]"
+                            }`}
                 ref={(videoElement) => {
                   if (videoElement) {
                     const stream = remoteStreams.current.get(streamId);
