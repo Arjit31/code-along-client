@@ -112,13 +112,23 @@ export function Videos() {
         socket.current.send(JSON.stringify(iceMessage));
       }
     };
-    peerConnection.ontrack = (event: any) => {
-      console.log("video recieved");
-      const stream = new MediaStream([event.track]);
+    peerConnection.ontrack = (event: RTCTrackEvent) => {
       const streamId = receiverId;
-      removeStream(streamId);
-      remoteStreams.current.set(streamId, stream);
-      setStreamIds((prev) => [...prev, streamId]);
+      let stream = remoteStreams.current.get(streamId);
+
+      if (!stream) {
+        stream = new MediaStream();
+        remoteStreams.current.set(streamId, stream);
+        setStreamIds((prev) => [...prev, streamId]);
+      }
+
+      // Avoid adding duplicate tracks
+      const trackAlreadyExists = stream
+        .getTracks()
+        .some((t) => t.id === event.track.id);
+      if (!trackAlreadyExists) {
+        stream.addTrack(event.track);
+      }
     };
     peerConnection.onconnectionstatechange = () => {
       console.log(
@@ -140,8 +150,12 @@ export function Videos() {
       }
     };
     const stream = videoRef.current?.srcObject as MediaStream;
-    stream?.getTracks().forEach((track: any) => {
-      peerConnection?.addTrack(track);
+    stream?.getAudioTracks().forEach((track) => {
+      console.log("inside audio tracks", track);
+      peerConnection?.addTrack(track, stream);
+    });
+    stream?.getVideoTracks().forEach((track) => {
+      peerConnection?.addTrack(track, stream);
     });
     console.log("videoSent", stream, videoRef.current?.srcObject);
     return peerConnection;
@@ -155,6 +169,7 @@ export function Videos() {
   async function connectMedia(constraints: any) {
     try {
       const stream = await openMediaDevices(constraints);
+      console.log("Audio Track", stream.getAudioTracks());
       console.log(videoRef.current, stream);
       if (videoRef.current) videoRef.current.srcObject = stream;
       console.log("Got MediaStream:", stream);
@@ -215,7 +230,7 @@ export function Videos() {
         roomId: roomId,
         name: userName,
       };
-      console.log(joinMessage)
+      console.log(joinMessage);
       socket.current.send(JSON.stringify(joinMessage));
     };
     socket.current.onclose = (event) => {
@@ -431,6 +446,7 @@ export function Videos() {
         <div className="flex flex-col">
           <video
             autoPlay
+            muted
             ref={videoRef}
             width="240"
             height="180"
