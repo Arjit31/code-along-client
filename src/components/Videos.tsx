@@ -166,7 +166,7 @@ export function Videos() {
   }
 
   function setWebSocketConnection() {
-    socket.current = new WebSocket("ws://localhost:3000");
+    socket.current = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
     socket.current.onmessage = async (event) => {
       const message = JSON.parse(event.data);
       console.log(message);
@@ -215,6 +215,7 @@ export function Videos() {
         roomId: roomId,
         name: userName,
       };
+      console.log(joinMessage)
       socket.current.send(JSON.stringify(joinMessage));
     };
     socket.current.onclose = (event) => {
