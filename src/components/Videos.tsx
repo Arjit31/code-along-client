@@ -86,6 +86,7 @@ export function Videos() {
   }
 
   function createNewConnection(receiverName: string, receiverId: string) {
+    console.log("inside create new peer connection")
     const peerConnection = new RTCPeerConnection();
     setPeerConnections((currentConnections) => {
       currentConnections.set(receiverId, peerConnection);
@@ -185,6 +186,7 @@ export function Videos() {
   }
 
   function setWebSocketConnection() {
+    console.log("inside set websocket")
     socket.current = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
     socket.current.onmessage = async (event) => {
       const message = JSON.parse(event.data);
@@ -274,13 +276,17 @@ export function Videos() {
   }, [peerConnections]);
 
   useEffect(() => {
-    if (showPreJoin === false) {
-      connectMedia({
-        video: { deviceId: selectedCameraId },
-        audio: { deviceId: selectedMicId },
-      });
-      setWebSocketConnection();
+    async function init(){
+      if (showPreJoin === false) {
+        await connectMedia({
+          video: { deviceId: selectedCameraId },
+          audio: { deviceId: selectedMicId },
+        });
+        console.log("at socket use effect")
+        setWebSocketConnection();
+      }
     }
+    init();
   }, [showPreJoin]);
 
   if (showPreJoin) {

@@ -12,7 +12,7 @@ export function CodeEditor() {
     null
   );
   const suppressChangeRef = useRef(false);
-  const versionRef = useRef(0);
+  const versionRef = useRef(-1);
   const [language, setLanguage] = useState("cpp");
   const [theme, setTheme] = useState("vs-dark");
   const [globalTheme] = useAtom(themeAtom);
@@ -25,6 +25,12 @@ export function CodeEditor() {
     if (globalSocket) {
       const socket = getSocket() as WebSocket;
       socketRef.current = socket;
+      socket.addEventListener("open", () => {
+        const demandDoc = {
+          type: "demandDoc",
+        };
+        socket.send(JSON.stringify(demandDoc));
+      });
 
       const handleMessage = (event: MessageEvent) => {
         try {
