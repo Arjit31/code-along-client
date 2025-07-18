@@ -11,7 +11,7 @@ import { useAtom } from "jotai";
 import { themeAtom } from "../atoms/themeAtom";
 import { prejoinAtom } from "../atoms/prejoinAtom";
 import { socketAtom } from "../atoms/socketAtom";
-import { getSocket } from "../lib/socekt"; 
+import { getSocket } from "../lib/socekt";
 
 async function getConnectedDevices(type: any) {
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -27,7 +27,9 @@ export function Videos() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const remoteStreams = useRef<Map<string, MediaStream>>(new Map());
   const [streamIds, setStreamIds] = useState<string[]>([]);
-  const socket = useRef<WebSocket>(new WebSocket(import.meta.env.VITE_WEBSOCKET_URL));
+  const socket = useRef<WebSocket>(
+    new WebSocket(import.meta.env.VITE_WEBSOCKET_URL)
+  );
   const [peerConnections, setPeerConnections] = useState<
     Map<string, RTCPeerConnection>
   >(new Map<string, RTCPeerConnection>());
@@ -86,8 +88,14 @@ export function Videos() {
   }
 
   function createNewConnection(receiverName: string, receiverId: string) {
-    console.log("inside create new peer connection")
-    const peerConnection = new RTCPeerConnection();
+    console.log("inside create new peer connection");
+    const peerConnection = new RTCPeerConnection({
+      iceServers: [
+        {
+          urls: "stun:stun.l.google.com:19302", // Free, public STUN
+        },
+      ],
+    });
     setPeerConnections((currentConnections) => {
       currentConnections.set(receiverId, peerConnection);
       return currentConnections;
@@ -186,7 +194,7 @@ export function Videos() {
   }
 
   function setWebSocketConnection() {
-    console.log("inside set websocket")
+    console.log("inside set websocket");
     socket.current = new WebSocket(import.meta.env.VITE_WEBSOCKET_URL);
     socket.current.onmessage = async (event) => {
       const message = JSON.parse(event.data);
@@ -248,10 +256,10 @@ export function Videos() {
       });
       setPeerConnections(new Map());
     };
-    getSocket(socket.current)
+    getSocket(socket.current);
     setGlobalSocket(true);
   }
-  
+
   useEffect(() => {
     console.log("at use Effect");
     async function init() {
@@ -276,13 +284,13 @@ export function Videos() {
   }, [peerConnections]);
 
   useEffect(() => {
-    async function init(){
+    async function init() {
       if (showPreJoin === false) {
         await connectMedia({
           video: { deviceId: selectedCameraId },
           audio: { deviceId: selectedMicId },
         });
-        console.log("at socket use effect")
+        console.log("at socket use effect");
         setWebSocketConnection();
       }
     }
