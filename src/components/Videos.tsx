@@ -154,13 +154,32 @@ export function Videos() {
         peerConnection.connectionState
       );
       if (
-        peerConnection.connectionState === "disconnected" ||
-        peerConnection.connectionState === "failed" ||
-        peerConnection.connectionState === "closed"
+        (peerConnection.connectionState === "disconnected" ||
+          peerConnection.connectionState === "failed" ||
+          peerConnection.connectionState === "closed") &&
+        peerConnections.has(receiverId)
       ) {
         console.log(`Peer ${receiverId} disconnected`);
-        setTimeout(() => {
-          createNewConnection(peerNames.get(receiverId) || "Peer", receiverId);
+        setTimeout(async () => {
+          console.log("Trying ICE restart...");
+
+          try {
+            const offer = await peerConnection.createOffer({
+              iceRestart: true,
+            });
+            await peerConnection.setLocalDescription(offer);
+
+            socket.current.send(
+              JSON.stringify({
+                type: "createOffer",
+                offer: offer,
+                receiverId: receiverId,
+                name: userName,
+              })
+            );
+          } catch (err) {
+            console.error("ICE restart failed:", err);
+          }
         }, 3000);
       }
     };
