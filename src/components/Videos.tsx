@@ -95,9 +95,9 @@ export function Videos() {
           urls: "stun:stun.l.google.com:19302",
         },
         {
-          urls: "turn:your-turn-server.com:3478",
-          username: "user",
-          credential: "chat-along",
+          urls: "turn:openrelay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject",
         },
       ],
     });
@@ -159,12 +159,9 @@ export function Videos() {
         peerConnection.connectionState === "closed"
       ) {
         console.log(`Peer ${receiverId} disconnected`);
-        removeStream(receiverId);
-        setPeerConnections((prev) => {
-          const newConnections = new Map(prev);
-          newConnections.delete(receiverId);
-          return newConnections;
-        });
+        setTimeout(() => {
+          createNewConnection(peerNames.get(receiverId) || "Peer", receiverId);
+        }, 3000);
       }
     };
     const stream = videoRef.current?.srcObject as MediaStream;
