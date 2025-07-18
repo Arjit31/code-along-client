@@ -9,6 +9,9 @@ import {
 } from "react-icons/fa";
 import { useAtom } from "jotai";
 import { themeAtom } from "../atoms/themeAtom";
+import { prejoinAtom } from "../atoms/prejoinAtom";
+import { socketAtom } from "../atoms/socketAtom";
+import { getSocket } from "../lib/socekt"; 
 
 async function getConnectedDevices(type: any) {
   const devices = await navigator.mediaDevices.enumerateDevices();
@@ -39,7 +42,8 @@ export function Videos() {
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
 
-  const [showPreJoin, setShowPreJoin] = useState(true);
+  const [showPreJoin, setShowPreJoin] = useAtom(prejoinAtom);
+  const [globalSocket, setGlobalSocket] = useAtom(socketAtom);
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>(
     []
   );
@@ -242,8 +246,10 @@ export function Videos() {
       });
       setPeerConnections(new Map());
     };
+    getSocket(socket.current)
+    setGlobalSocket(true);
   }
-
+  
   useEffect(() => {
     console.log("at use Effect");
     async function init() {

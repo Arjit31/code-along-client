@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as Y from "yjs";
-import { MonacoBinding } from "y-monaco";
-import { WebrtcProvider } from "y-webrtc";
 import * as monaco from "monaco-editor";
 import { useLocation } from "react-router-dom";
 import { useAtom } from "jotai";
 import { themeAtom } from "../atoms/themeAtom";
+import { socketAtom } from "../atoms/socketAtom";
+import { getSocket } from "../lib/socekt";
 
 export function CodeEditor() {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -16,38 +15,67 @@ export function CodeEditor() {
   const roomId = location.pathname.split("/")[2];
   const [language, setLanguage] = useState("cpp");
   const [theme, setTheme] = useState("vs-dark");
-  const [globalTheme, setGlobalTheme] = useAtom(themeAtom);
+  const [globalTheme] = useAtom(themeAtom);
+  const socketRef = useRef<WebSocket | null>(null);
+  const debounceTimerRef = useRef<any>(null);
+  const [globalSocket, setGlobalSocket] = useAtom(socketAtom);
 
   useEffect(() => {
-    const ydoc = new Y.Doc();
-    const provider = new WebrtcProvider(roomId, ydoc);
-    const ytext = ydoc.getText("monaco");
-
-    const editor = monaco.editor.create(editorRef.current!, {
-      value: "",
-      language,
-      theme,
-      automaticLayout: true,
-    });
-
-    monacoEditorRef.current = editor;
-
-    // Bind Monaco and Yjs
-    const monacoBinding = new MonacoBinding(
-      ytext,
-      editor.getModel()!,
-      new Set([editor]),
-      provider.awareness
-    );
-
-    return () => {
-      provider.destroy();
-      ydoc.destroy();
-      editor.dispose();
+    // Setup WebSocket
+    if (globalSocket) {
+      const socket = getSocket() as WebSocket;
+      socketRef.current = socket;
+      const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "docUpdate" && data.content !== undefined) {
+          const currentEditor = monacoEditorRef.current;
+          if (currentEditor) {
+            const currentContent = currentEditor.getValue();
+            if (currentContent !== data.content) {
+              const position = currentEditor.getPosition();
+              currentEditor.setValue(data.content);
+              if (position) currentEditor.setPosition(position);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Invalid message:", e);
+      }
     };
-  }, []);
 
-  // Handle language or theme change
+    socket.addEventListener("message", handleMessage);
+
+      // Create Monaco editor
+      const editor = monaco.editor.create(editorRef.current!, {
+        value: "",
+        language,
+        theme,
+        automaticLayout: true,
+      });
+      monacoEditorRef.current = editor;
+
+      // Send full doc on content change (debounced)
+      editor.onDidChangeModelContent(() => {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          const content = editor.getValue();
+          socket.send(
+            JSON.stringify({
+              type: "docUpdate",
+              content,
+            })
+          );
+        }, 300);
+      });
+
+      return () => {
+        editor.dispose();
+      };
+    }
+  }, [globalSocket]);
+
+  // Update language/theme
   useEffect(() => {
     if (monacoEditorRef.current) {
       monaco.editor.setTheme(theme);
