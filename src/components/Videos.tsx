@@ -92,7 +92,12 @@ export function Videos() {
     const peerConnection = new RTCPeerConnection({
       iceServers: [
         {
-          urls: "stun:stun.l.google.com:19302", // Free, public STUN
+          urls: "stun:stun.l.google.com:19302",
+        },
+        {
+          urls: "turn:your-turn-server.com:3478",
+          username: "user",
+          credential: "chat-along",
         },
       ],
     });
