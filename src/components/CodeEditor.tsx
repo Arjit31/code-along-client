@@ -19,6 +19,7 @@ export function CodeEditor() {
   const socketRef = useRef<WebSocket | null>(null);
   const debounceTimerRef = useRef<any>(null);
   const [globalSocket] = useAtom(socketAtom);
+  const lastOperated = useRef("")
 
   useEffect(() => {
     // Setup WebSocket
@@ -43,13 +44,13 @@ export function CodeEditor() {
           ) {
             const currentEditor = monacoEditorRef.current;
             if (!currentEditor) return;
-            const currentContent = currentEditor.getValue();
-            if (currentContent !== data.content) {
+            if (lastOperated.current !== data.content) {
               suppressChangeRef.current = true;
               const position = currentEditor.getPosition();
               currentEditor.setValue(data.content);
               if (position) currentEditor.setPosition(position);
               versionRef.current = data.version;
+              lastOperated.current = data.current;
             }
           }
         } catch (e) {
@@ -83,6 +84,7 @@ export function CodeEditor() {
               content,
             })
           );
+          lastOperated.current = content;
         }, 300);
       });
 
