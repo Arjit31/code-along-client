@@ -27,7 +27,7 @@ export function Videos() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const remoteStreams = useRef<Map<string, MediaStream>>(new Map());
   const [streamIds, setStreamIds] = useState<string[]>([]);
-  const socket = useRef<WebSocket>(new WebSocket(""));
+  const socket = useRef<WebSocket>(new WebSocket(import.meta.env.VITE_WEBSOCKET_URL));
   const [peerConnections, setPeerConnections] = useState<
     Map<string, RTCPeerConnection>
   >(new Map<string, RTCPeerConnection>());

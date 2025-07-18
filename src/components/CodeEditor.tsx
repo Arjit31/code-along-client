@@ -11,40 +11,47 @@ export function CodeEditor() {
   const monacoEditorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(
     null
   );
-  const location = useLocation();
-  const roomId = location.pathname.split("/")[2];
+  const suppressChangeRef = useRef(false);
+  const versionRef = useRef(0);
   const [language, setLanguage] = useState("cpp");
   const [theme, setTheme] = useState("vs-dark");
   const [globalTheme] = useAtom(themeAtom);
   const socketRef = useRef<WebSocket | null>(null);
   const debounceTimerRef = useRef<any>(null);
-  const [globalSocket, setGlobalSocket] = useAtom(socketAtom);
+  const [globalSocket] = useAtom(socketAtom);
 
   useEffect(() => {
     // Setup WebSocket
     if (globalSocket) {
       const socket = getSocket() as WebSocket;
       socketRef.current = socket;
+
       const handleMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "docUpdate" && data.content !== undefined) {
-          const currentEditor = monacoEditorRef.current;
-          if (currentEditor) {
+        try {
+          const data = JSON.parse(event.data);
+          if (
+            data.type === "docUpdate" &&
+            data.content !== undefined &&
+            data.version !== undefined &&
+            data.version > versionRef.current
+          ) {
+            const currentEditor = monacoEditorRef.current;
+            if (!currentEditor) return;
             const currentContent = currentEditor.getValue();
             if (currentContent !== data.content) {
+              suppressChangeRef.current = true;
               const position = currentEditor.getPosition();
               currentEditor.setValue(data.content);
               if (position) currentEditor.setPosition(position);
+              versionRef.current = data.version;
             }
           }
+        } catch (e) {
+          console.error("Invalid message:", e);
         }
-      } catch (e) {
-        console.error("Invalid message:", e);
-      }
-    };
+      };
 
-    socket.addEventListener("message", handleMessage);
+      socket.addEventListener("message", handleMessage);
 
       // Create Monaco editor
       const editor = monaco.editor.create(editorRef.current!, {
@@ -57,9 +64,13 @@ export function CodeEditor() {
 
       // Send full doc on content change (debounced)
       editor.onDidChangeModelContent(() => {
+        if (suppressChangeRef.current) {
+          suppressChangeRef.current = false;
+          return;
+        }
+        const content = editor.getValue();
         clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = setTimeout(() => {
-          const content = editor.getValue();
           socket.send(
             JSON.stringify({
               type: "docUpdate",
