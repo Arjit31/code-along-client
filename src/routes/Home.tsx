@@ -30,7 +30,7 @@ export function Home() {
         <h1 className="text-5xl font-bold">CodeAlong</h1>
       </div>
       <h1 className="text-4xl font-bold mb-6">Collaborative Code Meet</h1>
-      <p className="text-gray-400 text-center mb-10">
+      <p className="text-gray-400 text-center mb-1">
         A Platform for competative programming, where programmers meet, share ideas, and solve complex problems together.
       </p>
       <p className="text-gray-300 font-bold text-center mb-10">
