@@ -33,6 +33,9 @@ export function Home() {
       <p className="text-gray-400 text-center mb-10">
         A Platform for competative programming, where programmers meet, share ideas, and solve complex problems together.
       </p>
+      <p className="text-gray-300 font-bold text-center mb-10">
+        **The first request may be slow due to cold start on a free server, but it will respond quickly after that**
+      </p>
       {/* Room Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mb-16">
         <input
